@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Icon Sorter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px; color: #1a1a1a; background: #fff; padding: 16px;
+    }
+    h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+    .actions { display: flex; gap: 8px; margin-bottom: 14px; }
+    button {
+      flex: 1; padding: 8px 12px; border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+    }
+    .btn-primary { background: #0d99ff; color: #fff; }
+    .btn-primary:hover { background: #0a85e0; }
+    .btn-secondary { background: #f0f0f0; color: #333; }
+    .btn-secondary:hover { background: #e0e0e0; }
+    .result {
+      font-size: 12px; color: #555; margin-bottom: 12px;
+      display: none;
+    }
+    .result.success { color: #1a7f1a; }
+    .result.error { color: #c0392b; }
+    .list-header {
+      display: flex; justify-content: space-between;
+      font-size: 11px; font-weight: 600; color: #888;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      padding-bottom: 6px; border-bottom: 1px solid #eee; margin-bottom: 4px;
+    }
+    .scroll { max-height: 280px; overflow-y: auto; }
+    .item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 12px;
+    }
+    .item-name { color: #1a1a1a; word-break: break-all; flex: 1; }
+    .badge {
+      background: #fde8e8; color: #c0392b;
+      font-size: 11px; font-weight: 600;
+      padding: 2px 7px; border-radius: 10px; margin-left: 8px; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>Icon Sorter</h2>
+
+  <div class="actions">
+    <button class="btn-primary" onclick="sort()">Sort A–Z</button>
+    <button class="btn-secondary" onclick="scan()">Find Duplicates</button>
+  </div>
+
+  <div id="result" class="result"></div>
+  <div id="output"></div>
+
+  <script>
+    function sort() {
+      clear();
+      parent.postMessage({ pluginMessage: { type: 'sort' } }, '*');
+    }
+
+    function scan() {
+      clear();
+      parent.postMessage({ pluginMessage: { type: 'scan' } }, '*');
+    }
+
+    function clear() {
+      setResult('');
+      document.getElementById('output').innerHTML = '';
+    }
+
+    function setResult(msg, cls) {
+      const el = document.getElementById('result');
+      el.textContent = msg;
+      el.className = 'result' + (cls ? ' ' + cls : '');
+      el.style.display = msg ? '' : 'none';
+    }
+
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'sort-done') {
+        setResult('Sorted ' + msg.count + ' items alphabetically.', 'success');
+      }
+
+      if (msg.type === 'error') {
+        setResult(msg.message, 'error');
+      }
+
+      if (msg.type === 'scan-done') {
+        const out = document.getElementById('output');
+        if (msg.duplicates.length === 0) {
+          setResult('No duplicates found across ' + msg.total + ' items.', 'success');
+        } else {
+          setResult(
+            msg.duplicates.length + ' duplicate name' + (msg.duplicates.length > 1 ? 's' : '') +
+            ' found across ' + msg.total + ' items.',
+            'error'
+          );
+          out.innerHTML =
+            '<div class="list-header"><span>Name</span><span>Count</span></div>' +
+            '<div class="scroll">' +
+            msg.duplicates.map(function(d) {
+              return '<div class="item"><span class="item-name">' + esc(d.name) +
+                     '</span><span class="badge">' + d.count + '\xd7</span></div>';
+            }).join('') +
+            '</div>';
+        }
+      }
+    };
+
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>
